@@ -1,0 +1,6 @@
+h5py>=3.11
+numpy>=1.26
+scipy>=1.13
+scikit-image>=0.24
+pyproj>=3.7
+requests>=2.32
