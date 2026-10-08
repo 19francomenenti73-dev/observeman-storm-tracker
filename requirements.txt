@@ -1,6 +1,4 @@
-h5py>=3.11
-numpy>=1.26
-scipy>=1.13
-scikit-image>=0.24
-pyproj>=3.7
-requests>=2.32
+requests>=2.25.0
+numpy>=1.20.0
+scipy>=1.6.0
+Pillow>=8.0.0
