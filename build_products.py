@@ -1,9 +1,11 @@
-import argparse, json, pathlib
+import argparse
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
-ROOT = pathlib.Path(__file__).resolve().parent
-OUT = ROOT / 'data'
-HISTORY = ROOT / 'history.json'
+ROOT = Path(__file__).resolve().parent
+OUT = ROOT / 'site'
+HISTORY = ROOT / 'history_json'
 
 def now():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
@@ -15,54 +17,52 @@ def save(p, x):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     
-    # --- 1. SEZIONE RADAR (Blindata contro qualsiasi crash esterno) ---
+    # 1. SEZIONE RADAR (Completamente Open Source)
     cells = []
     try:
-        from ord_client import fetch_product
-        from odim import latest_cartesian
-        from composite import detect_cells
-        
+        from backend.ord_client import fetch_product
+        from backend.odm import read_odim
+        from backend.composite import detect_cells
+
         cfg_path = pathlib.Path('config/tracker.json')
-        threshold = 32.0
-        max_c = 120
+        thresholds = {}
+        processing = {}
         if cfg_path.exists():
             cfg = json.loads(cfg_path.read_text())
-            threshold = cfg.get('thresholds', {}).get('dbz_min', 32.0)
-            max_c = cfg.get('processing', {}).get('max cells', 120)
-            
-        blob = fetch_product('DBZH', 24)
+            thresholds = cfg.get('thresholds', {})
+            processing = cfg.get('processing', {})
+
+        dbz_min = thresholds.get('dbz_min', 32.0)
+        max_cells = processing.get('max_cells', 120)
+
+        blob = fetch_product("DBZH", 20)
         if blob:
-            cart = latest_cartesian(blob)
-            cells = detect_cells(cart, threshold=threshold, max_cells=max_c)
-            print(f"Trovate {len(cells)} celle radar valide.")
+            cart = read_odim(blob)
+            cells = detect_cells(cart, threshold=dbz_min, max_cells=max_cells)
+            print(f"Info: Rilevate {len(cells)} celle radar.")
     except Exception as e:
         print(f"Nota: Impossibile recuperare i dati radar attuali ({e}). Continuazione sicura della pipeline.")
         cells = []
 
-    # Salvataggio radar3d.json (garantito al 100%)
-    radar3d_data = {
-        'metadata': {'generated_at': now(), 'pipeline': 'OBSERVEMAN Storm Tracker', 'status': 'active' if cells else 'fallback'},
-        'cells': cells
+    # Salvataggio record open source
+    radar_data = {
+        "metadata": {"generated_at": now(), "source": "OBSERVEMAN Storm Tracker", "status": "active"},
+        "cells": cells
     }
-    save(OUT / 'radar3d.json', radar3d_data)
+    save(OUT / 'records.json', radar_data)
 
-    # --- 2. SEZIONE TERREMOTI USGS (Blindata) ---
-    quakes = {'type': 'FeatureCollection', 'features': []}
+    # 2. SEZIONE TERREMOTI USGS (Dati aperti pubblici)
+    quakes = {"type": "FeatureCollection", "features": []}
     try:
         from usgs import fetch as fetch_quakes
-        cfg_path = pathlib.Path('config/tracker.json')
-        if cfg_path.exists():
-            cfg = json.loads(cfg_path.read_text())
-            quakes_cfg = cfg.get('sources', {}).get('usgs', {})
-            quakes = fetch_quakes(quakes_cfg)
-            print("Dati terremoti USGS scaricati correttamente.")
+        quakes = fetch_quakes()
+        print("Dati terremoti USGS scaricati correttamente.")
     except Exception as e:
         print(f"Nota: Impossibile recuperare i terremoti USGS ({e}).")
 
     save(OUT / 'earthquakes.geojson', quakes)
-    
-    print('Pipeline eseguita con successo. Tutti i prodotti scritti in:', OUT)
+    print(f"Pipeline eseguita con successo. Tutti i file scritti in {OUT}.")
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
     
