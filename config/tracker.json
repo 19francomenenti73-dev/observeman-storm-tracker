@@ -2,44 +2,39 @@
   "thresholds": {
     "dbz_min": 32.0,
     "dbz_hail": 55.0,
-    "grid_xy_km": 1.0,
     "grid_z_km": 1.0,
+    "grid_z_km": 8.0,
     "max_grid_km": 220.0
   },
-
   "processing": {
     "min_voxels": 8,
-    "max_cells": 120,
-    "max_3d_cells": 24,
-    "max_3d_radars": 18,
-    "max_voxels_per_cell": 1800,
-    "update_minutes": 15,
-    "tracking_max_speed_kmh": 160,
-    "prediction_hours": 4,
-    "match_radius_km": 90
+    "max cells": 120,
+    "max id cells": 24,
+    "max id radars": 18,
+    "max voxels per cell": 7200,
+    "update minutes": 15,
+    "tracking max speed kmh": 140,
+    "prediction hours": 4,
+    "match radius km": 90
   },
-
   "sources": {
     "opera_ord": {
       "base_url": "https://api.meteogate.eu/eu-eumetnet-weather-radar",
-      "composite_location_id": "0-20010-0-OPERA",
+      "composite_location_id": "0.20810.0.OPERA",
       "standard_name": "DBZH",
-      "bbox": "-30,30,50,72"
+      "bbox": [-30, 30, 70, 85]
     },
-
     "eumetsat": {
       "enabled": true,
-      "wms_url": "https://view.eumetsat.int/geoserver/wms",
-      "layer": "msg_fes:rgb_eview",
+      "srs_url": "https://view.eumetsat.int/geoserver/wms",
+      "layer": "msg_fgb:rgb_evm",
       "attribution": "© EUMETSAT"
     },
-
     "usgs": {
       "enabled": true,
-      "min_magnitude": 4.5,
+      "min_magnitude": 4.2,
       "hours": 24
     },
-
     "lightning": {
       "enabled": false,
       "reason": "No redistribution source enabled until exact dataset licence is verified."
