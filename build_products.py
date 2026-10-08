@@ -2,21 +2,29 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 
-# Definiamo i percorsi di base in modo sicuro
+# Definizione dei percorsi di riferimento
 ROOT = Path(__file__).resolve().parent
-OUT = ROOT / 'site'
+SITE_DIR = ROOT / 'site'
 
 def now():
     """Restituisce la data e l'ora corrente in formato UTC standard."""
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
+def save_to_path(destination_dir, filename, data):
+    """
+    Funzione di supporto per salvare un file JSON in una cartella specifica
+    garantendo la creazione della directory se non esiste.
+    """
+    destination_dir.mkdir(parents=True, exist_ok=True)
+    file_path = destination_dir / filename
+    content = json.dumps(data, ensure_ascii=False, indent=2)
+    file_path.write_text(content, encoding='utf-8')
+    print(f"✅ Salvato con successo in [{destination_dir.name or 'root'}]: {filename} ({len(content)} caratteri)")
+
 def main():
-    print("🚀 Avvio della generazione dei prodotti per il tracciamento...")
+    print("🚀 Avvio della pipeline di generazione dati...")
     
-    # Assicuriamoci che la cartella site/ esista
-    OUT.mkdir(parents=True, exist_ok=True)
-    
-    # Dati delle celle temporalesche (struttura compatibile con il frontend Leaflet)
+    # 1. Struttura dati delle celle temporalesche (Test/Fallback operativo)
     cells = [
         {
             "id": 101,
@@ -44,14 +52,8 @@ def main():
         },
         "cells": cells
     }
-    
-    # Percorso e scrittura del file records.json nella cartella site/
-    records_path = OUT / 'records.json'
-    records_content = json.dumps(radar_data, ensure_ascii=False, indent=2)
-    records_path.write_text(records_content, encoding='utf-8')
-    print(f"✅ File JSON scritto con successo: {records_path.name} ({len(records_content)} caratteri)")
 
-    # Dati dei terremoti in formato GeoJSON standard
+    # 2. Struttura dati dei terremoti (GeoJSON)
     quakes = {
         "type": "FeatureCollection",
         "features": [
@@ -68,14 +70,16 @@ def main():
             }
         ]
     }
-    
-    # Percorso e scrittura del file earthquakes.geojson nella cartella site/
-    quakes_path = OUT / 'earthquakes.geojson'
-    quakes_content = json.dumps(quakes, ensure_ascii=False, indent=2)
-    quakes_path.write_text(quakes_content, encoding='utf-8')
-    print(f"✅ File JSON scritto con successo: {quakes_path.name} ({len(quakes_content)} caratteri)")
 
-    print("🏁 Pipeline completata. Tutti i file sono pronti nella cartella site/.")
+    # Eseguiamo il salvataggio DOPPIO: sia nella radice (.) sia nella cartella site/
+    # Questo elimina qualsiasi errore di percorso del frontend.
+    targets = [ROOT, SITE_DIR]
+
+    for target in targets:
+        save_to_path(target, 'records.json', radar_data)
+        save_to_path(target, 'earthquakes.geojson', quakes)
+
+    print("🏁 Pipeline completata: file JSON sincronizzati su tutti i percorsi di output.")
 
 if __name__ == "__main__":
     main()
