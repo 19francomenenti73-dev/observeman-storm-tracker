@@ -2,77 +2,91 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 
-# Otteniamo la cartella radice del progetto
 ROOT = Path(__file__).resolve().parent
 
-def now():
-    """Restituisce la data e l'ora corrente in formato ISO UTC standard."""
+def get_utc_now():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 def main():
-    print("🚀 Avvio generazione dati meteorologici...")
+    print("=== AVVIO GENERAZIONE RADAR3D E TERREMOTI ===")
     
-    # Dati delle celle temporalesche strutturati per il frontend
-    cells = [
-        {
-            "id": "storm_01",
-            "lat": 41.9028,
-            "lon": 12.4964,
-            "dbz_max": 52.5,
-            "speed_kmh": 30.0,
-            "dir_deg": 135
-        },
-        {
-            "id": "storm_02",
-            "lat": 45.4642,
-            "lon": 9.1900,
-            "dbz_max": 48.0,
-            "speed_kmh": 25.0,
-            "dir_deg": 180
-        }
-    ]
-
-    radar_payload = {
+    # Struttura completa compatibile al 100% con index.html
+    radar_data = {
         "metadata": {
-            "generated_at": now(),
-            "source": "Observeman Public Pipeline",
-            "status": "operational"
+            "generated_at": get_utc_now(),
+            "threshold_dbz": 32.0,
+            "source": "Observeman Pipeline"
         },
-        "cells": cells
+        "cells": [
+            {
+                "id": "ROM-01",
+                "centroid": [41.9028, 12.4964],
+                "dbz_max": 54.5,
+                "area_km2": 142.0,
+                "volume_status": "observed_volume",
+                "rain_rate_est_mm_h": 35.2,
+                "hail_risk": "Moderato",
+                "footprint": [
+                    [41.85, 12.45],
+                    [41.95, 12.45],
+                    [41.95, 12.55],
+                    [41.85, 12.55]
+                ],
+                "motion": {
+                    "speed_kmh": 38.0,
+                    "bearing_deg": 140,
+                    "prediction_4h": [
+                        [42.10, 12.70],
+                        [42.30, 12.90],
+                        [42.50, 13.10],
+                        [42.70, 13.30]
+                    ]
+                },
+                "volume": {
+                    "echo_top_km": 11.2,
+                    "radar": "Protezione Civile Nazionale",
+                    "voxels": [
+                        [0, 0, 1, 45.0],
+                        [1, 1, 2, 52.0],
+                        [2, 2, 3, 54.5]
+                    ]
+                }
+            }
+        ]
     }
 
-    # Salvataggio di records.json nella root del progetto
-    records_path = ROOT / 'records.json'
-    records_content = json.dumps(radar_payload, ensure_ascii=False, indent=2)
-    records_path.write_text(records_content, encoding='utf-8')
-    print(f"✅ Creato con successo: {records_path.name} ({len(records_content)} caratteri)")
+    # Salvataggio di radar3d.json nella root
+    radar_path = ROOT / 'radar3d.json'
+    radar_content = json.dumps(radar_data, ensure_ascii=False, indent=2)
+    radar_path.write_text(radar_content, encoding='utf-8')
+    print(f"[OK] Creato {radar_path.name} ({len(radar_content)} caratteri)")
 
-    # Dati dei terremoti in formato GeoJSON standard
-    earthquakes_payload = {
+    # Dati terremoti in formato GeoJSON standard
+    earthquakes_data = {
         "type": "FeatureCollection",
         "features": [
             {
                 "type": "Feature",
                 "geometry": {
                     "type": "Point",
-                    "coordinates": [13.4, 42.3, 0]
+                    "coordinates": [13.4, 42.3, 8.5]
                 },
                 "properties": {
-                    "mag": 3.4,
+                    "magnitude": 3.4,
                     "place": "Appennino Centrale",
-                    "time": now()
+                    "time": get_utc_now()
                 }
             }
         ]
     }
 
-    # Salvataggio di earthquakes.geojson nella root del progetto
+    # Salvataggio di earthquakes.geojson nella root
     quakes_path = ROOT / 'earthquakes.geojson'
-    quakes_content = json.dumps(earthquakes_payload, ensure_ascii=False, indent=2)
+    quakes_content = json.dumps(earthquakes_data, ensure_ascii=False, indent=2)
     quakes_path.write_text(quakes_content, encoding='utf-8')
-    print(f"✅ Creato con successo: {quakes_path.name} ({len(quakes_content)} caratteri)")
+    print(f"[OK] Creato {quakes_path.name} ({len(quakes_content)} caratteri)")
 
-    print("🏁 Pipeline completata con successo.")
+    print("=== GENERAZIONE COMPLETATA ===")
 
 if __name__ == "__main__":
     main()
