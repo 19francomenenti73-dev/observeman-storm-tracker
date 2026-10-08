@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "generated_at": "2026-10-08T21:45:19.303998Z",
+    "threshold_dbz": 32.0,
+    "source": "Observeman Pipeline"
+  },
+  "cells": [
+    {
+      "id": "ROM-01",
+      "centroid": [
+        41.9028,
+        12.4964
+      ],
+      "dbz_max": 54.5,
+      "area_km2": 142.0,
+      "volume_status": "observed_volume",
+      "rain_rate_est_mm_h": 35.2,
+      "hail_risk": "Moderato",
+      "footprint": [
+        [
+          41.85,
+          12.45
+        ],
+        [
+          41.95,
+          12.45
+        ],
+        [
+          41.95,
+          12.55
+        ],
+        [
+          41.85,
+          12.55
+        ]
+      ],
+      "motion": {
+        "speed_kmh": 38.0,
+        "bearing_deg": 140,
+        "prediction_4h": [
+          [
+            42.1,
+            12.7
+          ],
+          [
+            42.3,
+            12.9
+          ],
+          [
+            42.5,
+            13.1
+          ],
+          [
+            42.7,
+            13.3
+          ]
+        ]
+      },
+      "volume": {
+        "echo_top_km": 11.2,
+        "radar": "Protezione Civile Nazionale",
+        "voxels": [
+          [
+            0,
+            0,
+            1,
+            45.0
+          ],
+          [
+            1,
+            1,
+            2,
+            52.0
+          ],
+          [
+            2,
+            2,
+            3,
+            54.5
+          ]
+        ]
+      }
+    }
+  ]
+}

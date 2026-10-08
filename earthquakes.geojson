@@ -1,0 +1,21 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          13.4,
+          42.3,
+          8.5
+        ]
+      },
+      "properties": {
+        "magnitude": 3.4,
+        "place": "Appennino Centrale",
+        "time": "2026-10-08T21:45:19.304245Z"
+      }
+    }
+  ]
+}
