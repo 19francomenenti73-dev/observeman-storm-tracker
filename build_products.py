@@ -1,6 +1,6 @@
-import argparse, json, pathlib, sys
+import argparse, json, pathlib
 from datetime import datetime, timezone
-from ord_client import fetch_product, discover_radars, fetch_volume
+from ord_client import fetch_product, fetch_volume, discover_radars
 from odim import latest_cartesian, read_odim
 from composite import detect_cells
 from volume import build_volume, extract_cells, local_to_latlon
@@ -68,30 +68,22 @@ def main():
         prev = load(HISTORY)
         updated_tracks = update_tracks(prev.get('cells', []) if prev else [], tracked_cells, cfg['processing']['update minutes'])
         
-        history_data = {
-            'timestamp': now(),
-            'cells': updated_tracks
-        }
-        save(HISTORY, history_data)
-        
-        radar3d_data = {
-            'metadata': {'generated_at': now(), 'pipeline': 'OBSERVEMAN Storm Tracker'},
-            'cells': updated_tracks
-        }
-        save(OUT / 'radar3d.json', radar3d_data)
+        save(HISTORY, {'timestamp': now(), 'cells': updated_tracks})
+        save(OUT / 'radar3d.json', {'metadata': {'generated_at': now(), 'pipeline': 'OBSERVEMAN Storm Tracker'}, 'cells': updated_tracks})
 
     except Exception as e:
-        print("Error in main processing:", e)
-        save(OUT / 'radar3d.json', {'metadata': {'status': 'source unavailable'}})
+        print("Error in radar processing:", e)
+        save(OUT / 'radar3d.json', {'metadata': {'status': 'source unavailable'}, 'cells': []})
         
     try:
+        cfg = json.loads(pathlib.Path(args.config).read_text())
         quakes = fetch_quakes(cfg['sources']['usgs'])
         save(OUT / 'earthquakes.geojson', quakes)
     except Exception as e:
         print("Error fetching earthquakes:", e)
         save(OUT / 'earthquakes.geojson', {'type': 'FeatureCollection', 'features': []})
         
-    print('products written:', OUT)
+    print('Products generated successfully in:', OUT)
 
 if __name__ == '__main__':
     main()
