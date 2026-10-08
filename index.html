@@ -33,6 +33,7 @@ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
 
 const radar = L.layerGroup().addTo(map), eq = L.layerGroup(), ir = L.layerGroup(), light = L.layerGroup();
 let data = {cells: []}, eqData = {features: []};
+let radarRasterLayer = null;
 
 const irLayer = L.tileLayer.wms('https://view.eumetsat.int/geoserver/wms', {
     layers: 'msg_fes:rgb_eview',
@@ -48,8 +49,40 @@ function col(v) {
     return v >= 65 ? '#ff0000' : v >= 60 ? '#ff1744' : v >= 55 ? '#ff4d22' : v >= 50 ? '#ff8c00' : v >= 45 ? '#ffe000' : v >= 40 ? '#9be000' : '#00d9a0';
 }
 
+async function loadRainViewerRaster() {
+    try {
+        const response = await fetch('https://api.rainviewer.com/public/weather-maps.json');
+        const rvData = await response.json();
+        const past = rvData.radar && rvData.radar.past ? rvData.radar.past : [];
+        if (past.length > 0) {
+            const latest = past[past.length - 1];
+            const host = rvData.host || 'https://tile.rainviewer.com';
+            const path = latest.path;
+
+            if (radarRasterLayer) {
+                radar.removeLayer(radarRasterLayer);
+            }
+
+            radarRasterLayer = L.tileLayer(`${host}${path}/256/{z}/{x}/{y}/2/1_1.png`, {
+                opacity: 0.65,
+                zIndex: 200,
+                attribution: 'Radar Data © RainViewer'
+            });
+            radar.addLayer(radarRasterLayer);
+        }
+    } catch (err) {
+        console.error("Errore caricamento raster RainViewer:", err);
+    }
+}
+
 function draw() {
-    radar.clearLayers();
+    // Puliamo solo i layer vettoriali mantenendo il raster radar
+    radar.eachLayer(layer => {
+        if (layer !== radarRasterLayer) {
+            radar.removeLayer(layer);
+        }
+    });
+
     (data.cells || []).forEach(c => {
         if (!c.centroid) return;
         const poly = c.footprint && c.footprint.length > 3 
@@ -148,6 +181,7 @@ document.getElementById('close').onclick = () => document.getElementById('panel'
 
 async function load() {
     try {
+        await loadRainViewerRaster(); // Carica lo sfondo raster radar in tempo reale
         const [a, e] = await Promise.all([
             fetch('./radar3d.json?' + Date.now()).then(r => r.json()),
             fetch('./earthquakes.geojson?' + Date.now()).then(r => r.json())
