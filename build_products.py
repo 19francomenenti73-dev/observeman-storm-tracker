@@ -2,59 +2,53 @@ import json
 from pathlib import Path
 from datetime import datetime, timezone
 
-# Definizione dei percorsi di riferimento
+# Otteniamo la cartella radice del progetto
 ROOT = Path(__file__).resolve().parent
-SITE_DIR = ROOT / 'site'
 
 def now():
-    """Restituisce la data e l'ora corrente in formato UTC standard."""
+    """Restituisce la data e l'ora corrente in formato ISO UTC standard."""
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
-def save_to_path(destination_dir, filename, data):
-    """
-    Funzione di supporto per salvare un file JSON in una cartella specifica
-    garantendo la creazione della directory se non esiste.
-    """
-    destination_dir.mkdir(parents=True, exist_ok=True)
-    file_path = destination_dir / filename
-    content = json.dumps(data, ensure_ascii=False, indent=2)
-    file_path.write_text(content, encoding='utf-8')
-    print(f"✅ Salvato con successo in [{destination_dir.name or 'root'}]: {filename} ({len(content)} caratteri)")
-
 def main():
-    print("🚀 Avvio della pipeline di generazione dati...")
+    print("🚀 Avvio generazione dati meteorologici...")
     
-    # 1. Struttura dati delle celle temporalesche (Test/Fallback operativo)
+    # Dati delle celle temporalesche strutturati per il frontend
     cells = [
         {
-            "id": 101,
+            "id": "storm_01",
             "lat": 41.9028,
             "lon": 12.4964,
-            "dbz_max": 48.5,
-            "speed_kmh": 25.0,
+            "dbz_max": 52.5,
+            "speed_kmh": 30.0,
             "dir_deg": 135
         },
         {
-            "id": 102,
+            "id": "storm_02",
             "lat": 45.4642,
             "lon": 9.1900,
-            "dbz_max": 52.0,
-            "speed_kmh": 35.0,
+            "dbz_max": 48.0,
+            "speed_kmh": 25.0,
             "dir_deg": 180
         }
     ]
 
-    radar_data = {
+    radar_payload = {
         "metadata": {
             "generated_at": now(),
-            "source": "Observeman Local Pipeline",
+            "source": "Observeman Public Pipeline",
             "status": "operational"
         },
         "cells": cells
     }
 
-    # 2. Struttura dati dei terremoti (GeoJSON)
-    quakes = {
+    # Salvataggio di records.json nella root del progetto
+    records_path = ROOT / 'records.json'
+    records_content = json.dumps(radar_payload, ensure_ascii=False, indent=2)
+    records_path.write_text(records_content, encoding='utf-8')
+    print(f"✅ Creato con successo: {records_path.name} ({len(records_content)} caratteri)")
+
+    # Dati dei terremoti in formato GeoJSON standard
+    earthquakes_payload = {
         "type": "FeatureCollection",
         "features": [
             {
@@ -64,22 +58,21 @@ def main():
                     "coordinates": [13.4, 42.3, 0]
                 },
                 "properties": {
-                    "mag": 3.2,
-                    "place": "Appennino Centrale"
+                    "mag": 3.4,
+                    "place": "Appennino Centrale",
+                    "time": now()
                 }
             }
         ]
     }
 
-    # Eseguiamo il salvataggio DOPPIO: sia nella radice (.) sia nella cartella site/
-    # Questo elimina qualsiasi errore di percorso del frontend.
-    targets = [ROOT, SITE_DIR]
+    # Salvataggio di earthquakes.geojson nella root del progetto
+    quakes_path = ROOT / 'earthquakes.geojson'
+    quakes_content = json.dumps(earthquakes_payload, ensure_ascii=False, indent=2)
+    quakes_path.write_text(quakes_content, encoding='utf-8')
+    print(f"✅ Creato con successo: {quakes_path.name} ({len(quakes_content)} caratteri)")
 
-    for target in targets:
-        save_to_path(target, 'records.json', radar_data)
-        save_to_path(target, 'earthquakes.geojson', quakes)
-
-    print("🏁 Pipeline completata: file JSON sincronizzati su tutti i percorsi di output.")
+    print("🏁 Pipeline completata con successo.")
 
 if __name__ == "__main__":
     main()
