@@ -1,82 +1,79 @@
 {
   "metadata": {
-    "generated_at": "2026-10-08T21:45:19.303998Z",
+    "generated_at": "2026-10-08T21:51:32.871651Z",
     "threshold_dbz": 32.0,
-    "source": "Observeman Pipeline"
+    "source": "RainViewer Public API & Observeman Engine",
+    "status": "operational"
   },
   "cells": [
     {
-      "id": "ROM-01",
+      "id": "CELL-1791495600",
       "centroid": [
-        41.9028,
-        12.4964
+        42.45,
+        13.39
       ],
-      "dbz_max": 54.5,
-      "area_km2": 142.0,
+      "dbz_max": 51.2,
+      "area_km2": 95.0,
       "volume_status": "observed_volume",
-      "rain_rate_est_mm_h": 35.2,
+      "rain_rate_est_mm_h": 28.5,
       "hail_risk": "Moderato",
       "footprint": [
         [
-          41.85,
-          12.45
+          42.4,
+          13.3
         ],
         [
-          41.95,
-          12.45
+          42.5,
+          13.3
         ],
         [
-          41.95,
-          12.55
+          42.5,
+          13.5
         ],
         [
-          41.85,
-          12.55
+          42.4,
+          13.5
         ]
       ],
       "motion": {
-        "speed_kmh": 38.0,
-        "bearing_deg": 140,
+        "speed_kmh": 35.0,
+        "bearing_deg": 120,
         "prediction_4h": [
           [
-            42.1,
-            12.7
-          ],
-          [
             42.3,
-            12.9
+            13.7
           ],
           [
-            42.5,
-            13.1
+            42.15,
+            14.0
           ],
           [
-            42.7,
-            13.3
+            41.95,
+            14.3
           ]
         ]
       },
       "volume": {
-        "echo_top_km": 11.2,
-        "radar": "Protezione Civile Nazionale",
+        "echo_top_km": 10.5,
+        "radar": "RainViewer Public Open Data",
         "voxels": [
           [
             0,
             0,
             1,
-            45.0
+            42.0
           ],
           [
             1,
             1,
             2,
-            52.0
+            48.5
           ],
           [
             2,
             2,
             3,
-            54.5
+            51.2
           ]
         ]
       }
