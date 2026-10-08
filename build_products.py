@@ -5,7 +5,6 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 OUT = ROOT / 'site'
-HISTORY = ROOT / 'history_json'
 
 def now():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
@@ -17,14 +16,14 @@ def save(p, x):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     
-    # 1. SEZIONE RADAR (Completamente Open Source)
+    # 1. SEZIONE RADAR CON DEBUG DETTAGLIATO
     cells = []
     try:
         from backend.ord_client import fetch_product
         from backend.odm import read_odim
         from backend.composite import detect_cells
 
-        cfg_path = pathlib.Path('config/tracker.json')
+        cfg_path = Path('config/tracker.json')
         thresholds = {}
         processing = {}
         if cfg_path.exists():
@@ -35,33 +34,38 @@ def main():
         dbz_min = thresholds.get('dbz_min', 32.0)
         max_cells = processing.get('max_cells', 120)
 
+        print("DEBUG: Tentativo di download dati radar da ord_client...")
         blob = fetch_product("DBZH", 20)
+        
         if blob:
+            print(f"DEBUG: Dati binari ricevuti ({len(blob)} bytes). Elaborazione ODIM...")
             cart = read_odim(blob)
             cells = detect_cells(cart, threshold=dbz_min, max_cells=max_cells)
-            print(f"Info: Rilevate {len(cells)} celle radar.")
+            print(f"DEBUG: Elaborazione completata. Rilevate {len(cells)} celle.")
+        else:
+            print("DEBUG: La funzione fetch_product non ha restituito alcun dato (blob vuoto).")
+            
     except Exception as e:
-        print(f"Nota: Impossibile recuperare i dati radar attuali ({e}). Continuazione sicura della pipeline.")
+        print(f"ERRORE CATTURATO NEL RADAR: {str(e)}")
         cells = []
 
-    # Salvataggio record open source
     radar_data = {
         "metadata": {"generated_at": now(), "source": "OBSERVEMAN Storm Tracker", "status": "active"},
         "cells": cells
     }
     save(OUT / 'records.json', radar_data)
 
-    # 2. SEZIONE TERREMOTI USGS (Dati aperti pubblici)
+    # 2. SEZIONE TERREMOTI USGS
     quakes = {"type": "FeatureCollection", "features": []}
     try:
         from usgs import fetch as fetch_quakes
         quakes = fetch_quakes()
-        print("Dati terremoti USGS scaricati correttamente.")
+        print(f"DEBUG: Terremoti USGS scaricati correttamente ({len(quakes.get('features', []))} eventi).")
     except Exception as e:
-        print(f"Nota: Impossibile recuperare i terremoti USGS ({e}).")
+        print(f"ERRORE CATTURATO NEI TERREMOTI: {str(e)}")
 
     save(OUT / 'earthquakes.geojson', quakes)
-    print(f"Pipeline eseguita con successo. Tutti i file scritti in {OUT}.")
+    print("Pipeline di generazione completata.")
 
 if __name__ == "__main__":
     main()
