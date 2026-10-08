@@ -82,7 +82,7 @@ function show(c) {
             <div>GRANDINE<br><b>${c.hail_risk}</b></div>
             <div>MOTO<br><b>${c.motion ? c.motion.speed_kmh + ' km/h' : '—'}</b></div>
         </div>
-        ${v ? `<div class="radar3d"><canvas id="vc" class="vcanvas"></canvas></div><p class="small">Volume radar ${v.radar}. Visualizzazione isometrica.</p>` : ''}
+        ${v ? `<div class="radar3d"><canvas id="vc" class="vcanvas"></canvas></div><p class="small">Volume radar ${v.radar}.</p>` : ''}
         ${c.motion ? `<p class="green">Vettore: ${c.motion.bearing_deg}° ·${c.motion.speed_kmh} km/h<br>Previsione: +4 h</p>` : ''}
         <p class="small">*Stima Z–R derivata.</p>
     `;
@@ -148,7 +148,6 @@ document.getElementById('close').onclick = () => document.getElementById('panel'
 
 async function load() {
     try {
-        // CORRETTO: Percorsi relativi puliti puntati direttamente alla radice corrente
         const [a, e] = await Promise.all([
             fetch('./radar3d.json?' + Date.now()).then(r => r.json()),
             fetch('./earthquakes.geojson?' + Date.now()).then(r => r.json())
