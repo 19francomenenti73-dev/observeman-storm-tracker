@@ -35,10 +35,10 @@ jobs:
       - name: Prepare Pages bundle
         run: |
           mkdir -p site/data
-          cp -r Frontend/* site/
-          cp data/*.json site/data/
-          cp data/*.geojson site/data/
-          cp data/*.html site/data/
+          cp index.html site/
+          cp OUT/*.json site/data/
+          cp OUT/*.geojson site/data/
+          cp OUT/*.html site/data/ || true
 
       - name: Configure Pages
         uses: actions/configure-pages@v4
