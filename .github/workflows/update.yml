@@ -40,9 +40,9 @@ jobs:
           mkdir -p site/data
           cp index.html site/
           cp credits.html site/ || true
-          cp OUT/*.json site/data/ || true
-          cp OUT/*.geojson site/data/ || true
-          cp OUT/*.html site/data/ || true
+          cp data/*.json site/data/ || true
+          cp data/*.geojson site/data/ || true
+          cp data/*.html site/data/ || true
 
       - name: Configure Pages
         uses: actions/configure-pages@v4
