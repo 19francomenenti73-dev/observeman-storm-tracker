@@ -8,9 +8,8 @@ def get_utc_now():
     return datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
 def main():
-    print("=== AVVIO GENERAZIONE RADAR3D E TERREMOTI ===")
+    print("=== AVVIO GENERAZIONE PRODOTTI OBSERVEMAN ===")
     
-    # Struttura completa compatibile al 100% con index.html
     radar_data = {
         "metadata": {
             "generated_at": get_utc_now(),
@@ -55,13 +54,11 @@ def main():
         ]
     }
 
-    # Salvataggio di radar3d.json nella root
     radar_path = ROOT / 'radar3d.json'
     radar_content = json.dumps(radar_data, ensure_ascii=False, indent=2)
     radar_path.write_text(radar_content, encoding='utf-8')
-    print(f"[OK] Creato {radar_path.name} ({len(radar_content)} caratteri)")
+    print(f"[OK] Salvato {radar_path.name}")
 
-    # Dati terremoti in formato GeoJSON standard
     earthquakes_data = {
         "type": "FeatureCollection",
         "features": [
@@ -80,11 +77,10 @@ def main():
         ]
     }
 
-    # Salvataggio di earthquakes.geojson nella root
     quakes_path = ROOT / 'earthquakes.geojson'
     quakes_content = json.dumps(earthquakes_data, ensure_ascii=False, indent=2)
     quakes_path.write_text(quakes_content, encoding='utf-8')
-    print(f"[OK] Creato {quakes_path.name} ({len(quakes_content)} caratteri)")
+    print(f"[OK] Salvato {quakes_path.name}")
 
     print("=== GENERAZIONE COMPLETATA ===")
 
