@@ -36,8 +36,9 @@ jobs:
         run: |
           mkdir -p site/data
           cp index.html site/
-          cp OUT/*.json site/data/
-          cp OUT/*.geojson site/data/
+          cp credits.html site/ || true
+          cp OUT/*.json site/data/ || true
+          cp OUT/*.geojson site/data/ || true
           cp OUT/*.html site/data/ || true
 
       - name: Configure Pages
@@ -50,3 +51,4 @@ jobs:
 
       - name: Deploy Pages
         uses: actions/deploy-pages@v4
+        
