@@ -174,10 +174,10 @@ function showPopup(c) {
         .setContent(content)
         .openOn(map);
 
-    setTimeout(() => draw3d(v, c), 80);
+    setTimeout(() => draw3d(v), 80);
 }
 
-function draw3d(v, c) {
+function draw3d(v) {
     const can = document.getElementById('vc');
     if (!can) return;
     
@@ -191,34 +191,19 @@ function draw3d(v, c) {
     ctx.scale(d, d);
     ctx.clearRect(0, 0, width, height);
     
-    let vox = v && v.voxels ? [...v.voxels] : [];
+    // Utilizziamo ESCLUSIVAMENTE i dati voxel reali del radar, senza alcuna simulazione o forma fittizia
+    const vox = v && v.voxels ? v.voxels : [];
     
-    // Generatore sintetico di riserva: se i voxel sono pochi o assenti,
-    // ricostruiamo un profilo 3D completo basato su dBZ e Echo Top della cella.
-    if (vox.length < 15) {
-        vox = [];
-        const maxDbz = c ? c.dbz_max : 45;
-        const topKm = v && v.echo_top_km ? v.echo_top_km : 10;
-        const heightLevels = Math.min(12, Math.max(6, Math.round(topKm)));
-        
-        for (let iz = 0; iz < heightLevels; iz++) {
-            const radius = Math.max(1, Math.round((heightLevels - iz) * 0.75));
-            for (let ix = -radius; ix <= radius; ix++) {
-                for (let iy = -radius; iy <= radius; iy++) {
-                    if (ix*ix + iy*iy <= radius*radius + 1) {
-                        const distFromCore = Math.sqrt(ix*ix + iy*iy);
-                        let dbz = maxDbz - (distFromCore * 3.5) - (iz * 1.8);
-                        dbz = Math.max(25, Math.min(maxDbz, dbz));
-                        vox.push([ix, iy, iz, dbz]);
-                    }
-                }
-            }
-        }
+    if (vox.length === 0) {
+        ctx.fillStyle = '#8ab4f8';
+        ctx.font = '11px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Nessun dettaglio volumetrico disponibile', width / 2, height / 2);
+        return;
     }
     
-    if (vox.length === 0) return;
-    
-    // Calcolo centro di massa per centrare la struttura nel canvas
+    // Calcoliamo il centro di massa reale dei voxel per centrare la struttura nel canvas
     let sumX = 0, sumY = 0, sumZ = 0;
     for (const q of vox) {
         sumX += q[0]; sumY += q[1]; sumZ += q[2];
@@ -228,10 +213,10 @@ function draw3d(v, c) {
     const cz = sumZ / vox.length;
     
     const ox = width / 2;
-    const oy = height * 0.70;
-    const s = 5; // Dimensioni dei blocchetti voxel
+    const oy = height * 0.72;
+    const s = 4.5; // Dimensione dei blocchetti voxel reali
     
-    // Ordinamento isometrico per la corretta sovrapposizione 3D
+    // Ordinamento isometrico rigoroso per la corretta sovrapposizione in profondità
     vox.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
     
     for (const q of vox) {
@@ -240,10 +225,11 @@ function draw3d(v, c) {
         const dy = iy - cy;
         const dz = iz - cz;
         
+        // Proiezione isometrica fedele alla struttura reale
         const px = ox + (dx - dy) * s;
-        const py = oy + (dx + dy) * s * 0.42 - dz * s * 1.0;
+        const py = oy + (dx + dy) * s * 0.45 - dz * s * 0.9;
         
-        ctx.globalAlpha = 0.35 + Math.min(0.65, dbz / 90);
+        ctx.globalAlpha = 0.9;
         ctx.fillStyle = col(dbz);
         ctx.fillRect(px, py, s + 1, s + 1);
     }
