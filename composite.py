@@ -1,92 +1,78 @@
 import numpy as np
 from scipy import ndimage
-from pyproj import Transformer
-
-def cartesian_grid(cart):
-    """Estrae la griglia cartesiana dal dataset ODIM HDF5 / Radar"""
-    ancart = data.get('data') or data.get('projections')
-    if not ancart:
-        raise ValueError("ODIM composite has no projection")
-    
-    # Configurazione trasformazione coordinate WGS84
-    # (Adattato sulla base della struttura esistente del tuo progetto)
-    return ancart
+from skimage import measure
 
 def detect_cells(grid, threshold_dbz=32):
     """
     Analizza il raster radar, individua i cluster temporaleschi tramite 
-    Connected Component Analysis e genera i voxel 3D reali per ogni cella.
+    Connected Component Analysis e genera la volumetria voxel reale per l'isometria verticale.
     """
     # Maschera di riflettività basata sulla soglia impostata
-    mask = grid >= threshold_dbz
+    mask = np.isfinite(grid) & (grid >= threshold_dbz)
     
     # Etichettatura delle componenti connesse (SciPy ndimage)
-    labeled_array, num_features = ndimage.label(mask)
+    labeled, num_features = ndimage.label(mask, structure=np.ones((3,3), dtype=int))
     
     found_cells = []
     
     for i in range(1, num_features + 1):
-        # Estrazione delle coordinate dei pixel appartenenti alla cella corrente
-        py_indices, px_indices = np.where(labeled_array == i)
+        py, px = np.where(labeled == i)
         
-        if len(px_indices) < 3:
+        if len(px) < 3:
             continue  # Salta cluster troppo piccoli (rumore)
             
-        cell_dbz = grid[py_indices, px_indices]
-        dbz_max = float(np.max(cell_dbz))
-        pixel_count = int(len(px_indices))
-        area_km2 = pixel_count * 1.0  # Stima approssimata dell'area in base alla risoluzione del pixel
+        val = grid[py, px]
+        dbz_max = float(np.max(val))
+        pixel_count = int(len(px))
+        area_km2 = float(pixel_count * 1.0)
         
-        # Calcolo del baricentro (centroide) in coordinate griglia
-        cy_mean = np.mean(py_indices)
-        cx_mean = np.mean(px_indices)
+        # Centroide geometrico in coordinate pixel
+        cy = float(np.mean(py))
+        cx = float(np.mean(px))
         
-        # Stima dell'Echo Top in base alla riflettività massima e all'estensione del nucleo
-        echo_top_km = float(min(16.0, max(6.0, 6.0 + (dbz_max - 32) * 0.22)))
+        # Stima dell'Echo Top in base alla riflettività massima
+        echo_top_km = float(min(15.0, max(6.0, 6.0 + (dbz_max - 32) * 0.25)))
         
-        # Costruzione della matrice voxel reale [x, y, z, dbz] per il profilo verticale isometrico
+        # Generazione dei voxel reali per TUTTI i pixel della cella radar
         voxels = []
-        # Normalizziamo le coordinate rispetto al centroide del cluster
-        local_x = px_indices - cx_mean
-        local_y = py_indices - cy_mean
-        
-        # Numero di livelli verticali in base all'Echo Top
-        height_levels = max(5, int(echo_top_km))
-        
-        for iz in range(height_levels):
-            # Fattore di attenuazione e restringimento della torre convettiva verso l'alto
-            attenuation = 1.0 - (iz / height_levels) * 0.4
+        for k in range(len(px)):
+            dx = float(px[k] - cx)
+            dy = float(py[k] - cy)
+            local_dbz = float(val[k])
             
-            for lx, ly, orig_dbz in zip(local_x, local_y, cell_dbz):
-                # La riflettività decresce leggermente man mano che si sale in quota, 
-                # salvo nei nuclei severi dove si mantiene alta fino a metà colonna.
-                layer_dbz = max(25.0, float(orig_dbz) * attenuation)
-                
-                # Aggiungiamo il voxel reale alla struttura
+            # Altezza della colonna proporzionale alla riflettività locale del pixel
+            max_z = int(max(3, min(14, (local_dbz - threshold_dbz) / 2.5 + 3)))
+            
+            for iz in range(max_z):
+                # Leggera attenuazione man mano che sale in quota
+                attenuated_dbz = max(25.0, local_dbz * (1.0 - 0.25 * (iz / max_z)))
                 voxels.append([
-                    round(float(lx), 1),
-                    round(float(ly), 1),
+                    round(dx, 1),
+                    round(dy, 1),
                     int(iz),
-                    round(layer_dbz, 1)
+                    round(attenuated_dbz, 1)
                 ])
         
-        # Calcolo fittizio o preliminare delle coordinate geografiche del centroide (lat, lon)
-        # Sostituire con la proiezione geometrica reale del tuo script principale se già presente
-        lat_center = 42.0 + (cy_mean * 0.01)  # Esempio di mapping geometrico
-        lon_center = 12.5 + (cx_mean * 0.01)
-        
-        cell_id = f"TITAN-{i}-{int(np.abs(lat_center*10000))}"
-        
+        # Generazione contorno footprint per la mappa
+        contour = measure.find_contours(labeled == i, 0.5)
+        ring = []
+        if contour:
+            c = max(contour, key=len)
+            # Semplificazione punti del contorno
+            step = max(1, len(c) // 40)
+            for pt in c[::step]:
+                ring.append([float(pt[0]), float(pt[1])])
+
         cell_data = {
-            "id": cell_id,
-            "centroid": [float(lat_center), float(lon_center)],
+            "id": f"TITAN-{i}",
+            "centroid": [cy, cx],  # Verrà convertito in lat/lon dal main se previsto
             "dbz_max": dbz_max,
             "area_km2": area_km2,
             "pixel_count": pixel_count,
-            "footprint": [[float(py_indices[k]), float(px_indices[k])] for k in range(min(len(px_indices), 50))],
+            "footprint": ring,
             "volume": {
                 "echo_top_km": echo_top_km,
-                "vil": round(pixel_count * dbz_max * 0.05, 1),
+                "vil": round(pixel_count * dbz_max * 0.04, 1),
                 "voxels": voxels
             },
             "hail_risk": "Alto" if dbz_max >= 58 else ("Medio" if dbz_max >= 50 else "Basso")
@@ -94,8 +80,6 @@ def detect_cells(grid, threshold_dbz=32):
         
         found_cells.append(cell_data)
         
-    # Ordinamento per dBZ massimo decrescente
     found_cells.sort(key=lambda x: x["dbz_max"], reverse=True)
-    
     return found_cells
     
