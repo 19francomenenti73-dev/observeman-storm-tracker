@@ -1,35 +1,16 @@
 import numpy as np
 from scipy import ndimage
-from skimage import measure
-
-def classify_mesoscale_structure(dbz_max, area_km2, pixel_count):
-    """
-    Classifica rigorosamente la struttura convettiva secondo la nomenclatura 
-    meteorologica ufficiale basata su riflettività, area ed estensione.
-    """
-    if dbz_max >= 58:
-        return "Supercella / Core Severo"
-    elif dbz_max >= 53 and area_km2 > 800:
-        return "Bow Echo"
-    elif dbz_max >= 50 and area_km2 > 1500:
-        return "Squall Line"
-    elif area_km2 > 2500:
-        return "MCS (Sistema a Mesoscala)"
-    elif dbz_max >= 52:
-        return "Supercella (Potenziale Hook Echo)"
-    elif area_km2 > 1200:
-        return "MCV (Mesoscale Convective Vortex)"
-    elif area_km2 < 300 and dbz_max < 48:
-        return "Cella Isolata (Pulse Storm)"
-    else:
-        return "Cella Convettiva Organizzata"
 
 def detect_cells(grid, threshold_dbz=32):
     """
-    Analizza il raster radar pixel per pixel, estrae i cluster, 
-    calcola le metriche di mesoscala e genera la volumetria voxel 3D reale.
+    Analizza il raster radar pixel per pixel, individua i cluster con SciPy,
+    classifica la struttura a mesoscala secondo la nomenclatura ufficiale 
+    e genera la volumetria voxel 3D per il profilo verticale isometrico.
     """
+    # Maschera di riflettività basata sulla soglia
     mask = np.isfinite(grid) & (grid >= threshold_dbz)
+    
+    # Etichettatura delle componenti connesse
     labeled, num_features = ndimage.label(mask, structure=np.ones((3,3), dtype=int))
     
     found_cells = []
@@ -38,21 +19,36 @@ def detect_cells(grid, threshold_dbz=32):
         py, px = np.where(labeled == i)
         
         if len(px) < 4:
-            continue  # Scarta rumore isolato
+            continue  # Scarta il rumore di fondo
             
         val = grid[py, px]
         dbz_max = float(np.max(val))
         pixel_count = int(len(px))
         area_km2 = float(pixel_count * 1.0)
         
-        # Centroide in coordinate pixel
+        # Centroide geometrico in coordinate pixel
         cy = float(np.mean(py))
         cx = float(np.mean(px))
         
-        # Classificazione ufficiale della struttura a mesoscala
-        structure_name = classify_mesoscale_structure(dbz_max, area_km2, pixel_count)
-        
-        # Echo Top stimato in base al dBZ massimo
+        # Classificazione rigorosa della struttura a mesoscala (Nomenclatura Ufficiale)
+        if dbz_max >= 58:
+            structure_name = "Supercella / Core Severo"
+        elif dbz_max >= 53 and area_km2 > 800:
+            structure_name = "Bow Echo"
+        elif dbz_max >= 50 and area_km2 > 1500:
+            structure_name = "Squall Line"
+        elif area_km2 > 2500:
+            structure_name = "MCS (Sistema a Mesoscala)"
+        elif dbz_max >= 52:
+            structure_name = "Supercella (Potenziale Hook Echo)"
+        elif area_km2 > 1200:
+            structure_name = "MCV (Mesoscale Convective Vortex)"
+        elif area_km2 < 300 and dbz_max < 48:
+            structure_name = "Cella Isolata (Pulse Storm)"
+        else:
+            structure_name = "Cella Convettiva Organizzata"
+            
+        # Echo Top stimato in base alla riflettività massima
         echo_top_km = float(min(16.0, max(6.0, 6.0 + (dbz_max - 32) * 0.22)))
         
         # Generazione voxel pixel-by-pixel per il profilo verticale isometrico
@@ -62,11 +58,10 @@ def detect_cells(grid, threshold_dbz=32):
             dy = float(py[k] - cy)
             local_dbz = float(val[k])
             
-            # L'altezza della colonna in voxel è proporzionale al dBZ del singolo pixel
+            # Altezza della colonna proporzionale al dBZ del singolo pixel
             col_height = int(max(2, min(15, (local_dbz - threshold_dbz) / 2.2 + 2)))
             
             for iz in range(col_height):
-                # Attenuazione graduale del dBZ verso la cima della colonna
                 attenuated_dbz = max(25.0, local_dbz - (iz * 1.2))
                 voxels.append([
                     round(dx, 1),
@@ -75,17 +70,11 @@ def detect_cells(grid, threshold_dbz=32):
                     round(attenuated_dbz, 1)
                 ])
         
-        # Contorno per il footprint sulla mappa
-        contour = measure.find_contours(labeled == i, 0.5)
-        ring = []
-        if contour:
-            c = max(contour, key=len)
-            step = max(1, len(c) // 35)
-            for pt in c[::step]:
-                ring.append([float(pt[0]), float(pt[1])])
+        # Footprint geometrico della cella per la mappa
+        ring = [[float(py[k]), float(px[k])] for k in range(0, len(px), max(1, len(px)//25))]
 
         cell_data = {
-            "id": structure_name,  # ID sostituito direttamente con la nomenclatura ufficiale
+            "id": structure_name,  # ID sostituito con la nomenclatura ufficiale
             "centroid": [cy, cx],
             "dbz_max": dbz_max,
             "area_km2": area_km2,
