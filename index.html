@@ -16,35 +16,22 @@ html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;backgr
 .btn{border:1px solid #2a7ca5;background:rgba(3,18,31,.94);color:#bcecff;border-radius:10px;padding:9px 12px;font-weight:700;white-space:nowrap}
 .btn.on{background:#0b5577;color:#fff}
 
-.panel{
-    position:absolute;
-    z-index:1100;
-    right:10px;
-    top:58px;
-    width:min(390px,calc(100% - 20px));
-    max-height:80%;
-    overflow:auto;
-    background:rgba(3, 13, 23, 0.92);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border:1px solid rgba(35, 128, 169, 0.5);
-    border-radius:16px;
-    padding:16px;
-    display:none;
-    box-shadow:0 10px 30px rgba(0, 150, 255, 0.2);
-}
-
 .logo{position:absolute;z-index:1000;bottom:8px;right:10px;border:1px solid #1989c5;background:rgba(3,19,34,.94);border-radius:16px;padding:6px 12px;font-size:10px;color:#5dd1ff;font-weight:800;white-space:nowrap}
 .status{position:absolute;z-index:1000;left:8px;bottom:8px;background:rgba(3,13,23,.92);padding:6px 10px;border-radius:8px;font-size:11px;color:#9cc7d9;border:1px solid #173e52;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.radar3d{position:relative;width:100%;height:260px;background:linear-gradient(#071827,#030b12);border:1px solid #20495e;border-radius:12px;overflow:hidden;margin-top:10px}
-.vcanvas{width:100%;height:100%}
-.close{float:right;border:0;background:none;color:#bcecff;font-size:22px;cursor:pointer;padding:0 4px}
-.kv{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0}
-.kv div{border:1px solid rgba(23,62,82,0.8);border-radius:10px;padding:8px 10px;background:rgba(7,27,40,0.6);font-size:12px}
-.small{font-size:11px;color:#9db8c5;line-height:1.4}
 .eq{color:#ff5265}
 .green{color:#39ffab;font-weight:600}
-.storm-badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:700;margin-bottom:6px;background:#0b5577;color:#5dd1ff;border:1px solid #20495e}
+
+/* Stile personalizzato per il popup stile Leaflet pulito */
+.custom-popup .leaflet-popup-content-wrapper {
+    background: #ffffff;
+    color: #1a1a1a;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    padding: 2px;
+}
+.custom-popup .leaflet-popup-tip {
+    background: #ffffff;
+}
 </style>
 </head>
 <body>
@@ -53,10 +40,6 @@ html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;backgr
   <button class="btn on" data-l="radar">RADAR EUROPA</button>
   <button class="btn" data-l="ir">IR SAT</button>
   <button class="btn" data-l="eq">TERREMOTI ≥4.5</button>
-</div>
-<div id="panel" class="panel">
-  <button id="close" class="close">×</button>
-  <div id="inside"></div>
 </div>
 <div class="status" id="status">Caricamento in corso...</div>
 <div class="logo">● NOWCASTING ITALIA</div>
@@ -88,7 +71,6 @@ function col(v) {
     return v >= 65 ? '#ff0000' : v >= 60 ? '#ff1744' : v >= 55 ? '#ff4d22' : v >= 50 ? '#ff8c00' : v >= 45 ? '#ffe000' : v >= 40 ? '#9be000' : '#00d9a0';
 }
 
-// Funzione di analisi morfologica e radar per la classificazione della cella
 function classifyStorm(c, v) {
     const dbz = c.dbz_max || 0;
     const area = c.area_km2 || 0;
@@ -97,21 +79,21 @@ function classifyStorm(c, v) {
     const hail = c.hail_risk || 'Basso';
 
     if (dbz >= 58 && echoTop >= 13 && (hail === 'Alto' || hail === 'Estremo')) {
-        return { name: 'POSSIBILE SUPERSCELLA', desc: 'Forte rotazione / Core severo estremo', color: '#ff304c' };
+        return { name: 'Supercella / Core Severo', color: '#ff304c' };
     }
     if (dbz >= 52 && area > 1200 && speed > 35) {
-        return { name: 'BOW ECHO / LINEA DI SQUALL', desc: 'Fronte convettivo avanzato ad alta velocità', color: '#ff8c00' };
+        return { name: 'Bow Echo / Squall Line', color: '#ff8c00' };
     }
     if (area > 2500 && dbz >= 46) {
-        return { name: 'MCS / SISTEMA A MESOSCALA', desc: 'Vasta struttura temporalesca organizzata', color: '#36a8ff' };
+        return { name: 'MCS (Sistema a Mesoscala)', color: '#1976d2' };
     }
     if (dbz >= 52 && echoTop >= 11) {
-        return { name: 'TEMPORALE INTENSO / SEVERO', desc: 'Cellula con forte corrente ascensionale', color: '#ffe000' };
+        return { name: 'Temporale Intenso', color: '#e65100' };
     }
     if (area < 350 && dbz < 48) {
-        return { name: 'CELLA ISOLATA (PULSE STORM)', desc: 'Cellula convettiva di modeste dimensioni', color: '#39ffab' };
+        return { name: 'Cella Isolata (Pulse Storm)', color: '#2e7d32' };
     }
-    return { name: 'SISTEMA CONVETTIVO ISOLATO', desc: 'Nucleo temporalesco monitorato', color: '#5dd1ff' };
+    return { name: 'Cella Convettiva Organizzata', color: '#0b5577' };
 }
 
 async function loadRainViewerRaster() {
@@ -154,8 +136,8 @@ function draw() {
             : L.circleMarker(c.centroid, {radius: 7, color: '#00ff9d', fillColor: col(c.dbz_max), fillOpacity: .8});
         
         const ring = L.circleMarker(c.centroid, {radius: 12, color: '#00ff9d', weight: 2, fill: false});
-        poly.on('click', () => show(c));
-        ring.on('click', () => show(c));
+        poly.on('click', () => showPopup(c));
+        ring.on('click', () => showPopup(c));
         radar.addLayer(poly);
         radar.addLayer(ring);
         
@@ -165,28 +147,37 @@ function draw() {
     });
 }
 
-function show(c) {
-    document.getElementById('panel').style.display = 'block';
+function showPopup(c) {
     const v = c.volume;
     const classification = classifyStorm(c, v);
+    const speedStr = c.motion ? `${c.motion.speed_kmh} km/h (${c.motion.bearing_deg}°)` : '—';
+    const vilStr = v && v.vil ? `${v.vil}` : '—';
+    const topStr = v ? `${v.echo_top_km.toFixed(1)} km` : '—';
 
-    document.getElementById('inside').innerHTML = `
-        <div class="storm-badge" style="color:${classification.color}; border-color:${classification.color};">● ${classification.name}</div>
-        <h3 style="margin:0 0 4px 0; color:#fff; font-size:16px;">${classification.desc}</h3>
-        <div class="small" style="margin-bottom:10px; color:#8ab4f8;">ID Sorgente: ${c.id} · ${c.volume_status === 'observed_volume' ? 'Volume Radar Osservato' : 'Analisi geometrica'}</div>
-        <div class="kv">
-            <div>MAX<br><b style="color:#fff; font-size:13px;">${c.dbz_max.toFixed(1)} dBZ</b></div>
-            <div>AREA<br><b style="color:#fff; font-size:13px;">${c.area_km2.toFixed(0)} km²</b></div>
-            <div>ECHO TOP<br><b style="color:#fff; font-size:13px;">${v ? v.echo_top_km.toFixed(1) : '—'} km</b></div>
-            <div>RAIN RATE<br><b style="color:#fff; font-size:13px;">${c.rain_rate_est_mm_h} mm/h*</b></div>
-            <div>GRANDINE<br><b style="color:#fff; font-size:13px;">${c.hail_risk}</b></div>
-            <div>MOTO<br><b style="color:#fff; font-size:13px;">${c.motion ? c.motion.speed_kmh + ' km/h' : '—'}</b></div>
+    const content = `
+        <div style="font-family:system-ui,sans-serif; font-size:12px; color:#1a1a1a; min-width:260px; padding:4px;">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px; color:#0b5577;">ID: ${c.id}</div>
+            <div style="margin-bottom:3px;"><b>Struttura:</b> <span style="color:${classification.color}; font-weight:600;">>= ${c.dbz_max.toFixed(0)} dBZ — ${classification.name}</span></div>
+            <div style="margin-bottom:3px;"><b>Velocità:</b> ${speedStr}</div>
+            <div style="margin-bottom:8px;"><b>VIL:</b> ${vilStr} kg/m² | <b>Top:</b> ${topStr}</div>
+            ${v ? `
+            <div style="border:1px solid #d0d7de; border-radius:8px; padding:6px; background:#f6f8fa; text-align:center;">
+                <div style="font-size:11px; color:#57606a; margin-bottom:4px; font-weight:600;">Profilo Verticale Dettagliato</div>
+                <div style="position:relative; width:100%; height:180px; background:#071827; border-radius:6px; overflow:hidden;">
+                    <canvas id="vc" style="width:100%; height:100%; display:block;"></canvas>
+                </div>
+            </div>` : ''}
         </div>
-        ${v ? `<div class="radar3d"><canvas id="vc" class="vcanvas"></canvas></div><p class="small" style="margin-top:6px;">Volume radar ${v.radar}.</p>` : ''}
-        ${c.motion ? `<p class="green" style="margin:8px 0;">Vettore: ${c.motion.bearing_deg}° ·${c.motion.speed_kmh} km/h<br>Previsione: +4 h</p>` : ''}
-        <p class="small" style="margin:4px 0 0 0;">*Stima Z–R derivata.</p>
     `;
-    if (v) draw3d(v);
+
+    L.popup({maxWidth: 320, className: 'custom-popup'})
+        .setLatLng(c.centroid)
+        .setContent(content)
+        .openOn(map);
+
+    if (v) {
+        setTimeout(() => draw3d(v), 50);
+    }
 }
 
 function draw3d(v) {
@@ -215,13 +206,18 @@ function drawEq() {
         const p = f.geometry.coordinates, pr = f.properties;
         const m = L.circleMarker([p[1], p[0]], {radius: 8, color: '#ff304c', fillColor: '#ff304c', fillOpacity: .85});
         m.on('click', () => {
-            document.getElementById('panel').style.display = 'block';
-            document.getElementById('inside').innerHTML = `
-                <h3 class="eq" style="margin:0 0 8px 0; font-size:16px;">TERREMOTO M ${pr.magnitude}</h3>
-                <p style="margin:0 0 6px 0; font-weight:600;">${pr.place}</p>
-                <p class="small" style="margin:0 0 6px 0;">${new Date(pr.time).toLocaleString('it-IT')}<br>Profondità: ${p[2]} km</p>
-                <p class="small" style="margin:0;">Fonte: USGS</p>
+            const eqContent = `
+                <div style="font-family:system-ui,sans-serif; font-size:12px; color:#1a1a1a; min-width:220px; padding:4px;">
+                    <div style="font-weight:700; font-size:13px; margin-bottom:4px; color:#ff304c;">TERREMOTO M ${pr.magnitude}</div>
+                    <div style="font-weight:600; margin-bottom:4px;">${pr.place}</div>
+                    <div style="color:#57606a; margin-bottom:4px;">${new Date(pr.time).toLocaleString('it-IT')}<br>Profondità: ${p[2]} km</div>
+                    <div style="font-size:10px; color:#8c959f;">Fonte: USGS</div>
+                </div>
             `;
+            L.popup({maxWidth: 280, className: 'custom-popup'})
+                .setLatLng([p[1], p[0]])
+                .setContent(eqContent)
+                .openOn(map);
         });
         eq.addLayer(m);
     });
@@ -239,8 +235,6 @@ document.querySelectorAll('.btn').forEach(b => {
         }
     };
 });
-
-document.getElementById('close').onclick = () => document.getElementById('panel').style.display = 'none';
 
 async function load() {
     loadRainViewerRaster();
