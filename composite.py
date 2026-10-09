@@ -2,35 +2,25 @@ import numpy as np
 from scipy import ndimage
 
 def detect_cells(grid, threshold_dbz=32):
-    """
-    Analizza il raster radar pixel per pixel, individua i cluster con SciPy,
-    classifica la struttura a mesoscala secondo la nomenclatura ufficiale 
-    e genera la volumetria voxel 3D per il profilo verticale isometrico.
-    """
-    # Maschera di riflettività basata sulla soglia
     mask = np.isfinite(grid) & (grid >= threshold_dbz)
-    
-    # Etichettatura delle componenti connesse
     labeled, num_features = ndimage.label(mask, structure=np.ones((3,3), dtype=int))
     
     found_cells = []
     
     for i in range(1, num_features + 1):
         py, px = np.where(labeled == i)
-        
         if len(px) < 4:
-            continue  # Scarta il rumore di fondo
+            continue
             
         val = grid[py, px]
         dbz_max = float(np.max(val))
         pixel_count = int(len(px))
         area_km2 = float(pixel_count * 1.0)
         
-        # Centroide geometrico in coordinate pixel
         cy = float(np.mean(py))
         cx = float(np.mean(px))
         
-        # Classificazione rigorosa della struttura a mesoscala (Nomenclatura Ufficiale)
+        # Nomenclatura ufficiale a mesoscala
         if dbz_max >= 58:
             structure_name = "Supercella / Core Severo"
         elif dbz_max >= 53 and area_km2 > 800:
@@ -48,34 +38,23 @@ def detect_cells(grid, threshold_dbz=32):
         else:
             structure_name = "Cella Convettiva Organizzata"
             
-        # Echo Top stimato in base alla riflettività massima
         echo_top_km = float(min(16.0, max(6.0, 6.0 + (dbz_max - 32) * 0.22)))
         
-        # Generazione voxel pixel-by-pixel per il profilo verticale isometrico
         voxels = []
         for k in range(len(px)):
             dx = float(px[k] - cx)
             dy = float(py[k] - cy)
             local_dbz = float(val[k])
-            
-            # Altezza della colonna proporzionale al dBZ del singolo pixel
             col_height = int(max(2, min(15, (local_dbz - threshold_dbz) / 2.2 + 2)))
-            
             for iz in range(col_height):
                 attenuated_dbz = max(25.0, local_dbz - (iz * 1.2))
-                voxels.append([
-                    round(dx, 1),
-                    round(dy, 1),
-                    int(iz),
-                    round(attenuated_dbz, 1)
-                ])
+                voxels.append([round(dx, 1), round(dy, 1), int(iz), round(attenuated_dbz, 1)])
         
-        # Footprint geometrico della cella per la mappa
         ring = [[float(py[k]), float(px[k])] for k in range(0, len(px), max(1, len(px)//25))]
 
-        cell_data = {
-            "id": structure_name,  # ID sostituito con la nomenclatura ufficiale
-            "centroid": [cy, cx],
+        found_cells.append({
+            "id": structure_name,
+            "centroid": [float(cy), float(cx)],
             "dbz_max": dbz_max,
             "area_km2": area_km2,
             "pixel_count": pixel_count,
@@ -86,9 +65,7 @@ def detect_cells(grid, threshold_dbz=32):
                 "voxels": voxels
             },
             "hail_risk": "Alto" if dbz_max >= 58 else ("Medio" if dbz_max >= 50 else "Basso")
-        }
-        
-        found_cells.append(cell_data)
+        })
         
     found_cells.sort(key=lambda x: x["dbz_max"], reverse=True)
     return found_cells
