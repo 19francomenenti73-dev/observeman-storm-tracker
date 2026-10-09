@@ -51,7 +51,7 @@ const radar = L.layerGroup().addTo(map);
 const eq = L.layerGroup();
 const ir = L.layerGroup();
 
-let data = {cells: []}, eqData = {features: []};
+let data = {cells: []};
 let radarRasterLayer = null;
 
 const irLayer = L.tileLayer.wms('https://view.eumetsat.int/geoserver/wms', {
@@ -171,7 +171,6 @@ function draw3d(v) {
         return;
     }
     
-    // Baricentro dei voxel per il centramento automatico nel canvas
     let sumX = 0, sumY = 0, sumZ = 0;
     for (const q of vox) {
         sumX += q[0]; sumY += q[1]; sumZ += q[2];
@@ -181,10 +180,9 @@ function draw3d(v) {
     const cz = sumZ / vox.length;
     
     const ox = width / 2;
-    const oy = height * 0.72;
-    const s = 4.0; // Scala voxel
+    const oy = height * 0.75;
+    const s = 3.5;
     
-    // Ordinamento isometrico per corretta sovrapposizione posteriore/anteriore
     vox.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
     
     for (const q of vox) {
@@ -194,11 +192,11 @@ function draw3d(v) {
         const dz = iz - cz;
         
         const px = ox + (dx - dy) * s;
-        const py = oy + (dx + dy) * s * 0.45 - dz * s * 0.85;
+        const py = oy + (dx + dy) * s * 0.45 - dz * s * 0.9;
         
         ctx.globalAlpha = 0.95;
         ctx.fillStyle = col(dbz);
-        ctx.fillRect(px, py, s + 0.8, s + 0.8);
+        ctx.fillRect(px, py, s + 0.6, s + 0.6);
     }
 }
 
