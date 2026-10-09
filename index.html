@@ -6,7 +6,18 @@
 <title>Nowcasting Italia Dashboard</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;background:#050c15;color:#eaf6ff;overflow:hidden}.top{position:absolute;z-index:1000;top:8px;left:8px;right:8px;display:flex;gap:6px;overflow:auto}.btn{border:1px solid #2a7ca5;background:rgba(3,18,31,.94);color:#bcecff;border-radius:10px;padding:9px 12px;font-weight:700;white-space:nowrap}.btn.on{background:#0b5577;color:#fff}.panel{position:absolute;z-index:1100;right:10px;top:58px;width:min(390px,calc(100% - 20px));max-height:78%;overflow:auto;background:rgba(3,13,23,.96);border:1px solid #2380a9;border-radius:14px;padding:14px;display:none;box-shadow:0 0 24px rgba(0,170,255,.18)}.logo{position:absolute;z-index:1000;bottom:9px;left:50%;transform:translateX(-50%);border:1px solid #1989c5;background:rgba(3,19,34,.94);border-radius:22px;padding:9px 16px;color:#5dd1ff;font-weight:800;white-space:nowrap;animation:p 2s infinite}.status{position:absolute;z-index:1000;left:8px;bottom:48px;max-width:calc(100% - 16px);background:rgba(3,13,23,.92);padding:6px 10px;border-radius:8px;font-size:11px;color:#9cc7d9;border:1px solid #173e52;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.legend{font-size:11px;color:#a9c4d0}.sw{display:inline-block;width:35px;height:7px;border-radius:5px;margin:0 3px}.radar3d{position:relative;width:100%;height:260px;background:linear-gradient(#071827,#030b12);border:1px solid #20495e;border-radius:12px;overflow:hidden}.vcanvas{width:100%;height:100%}.close{float:right;border:0;background:none;color:#bcecff;font-size:20px}.kv{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}.kv div{border:1px solid #173e52;border-radius:8px;padding:7px;background:rgba(7,27,40,.7)}.small{font-size:11px;color:#9db8c5}.eq{color:#ff5265}.green{color:#39ffab}@keyframes p{50%{box-shadow:0 0 20px rgba(0,170,255,.6)}}
+html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;background:#050c15;color:#eaf6ff;overflow:hidden}
+.top{position:absolute;z-index:1000;top:8px;left:8px;right:8px;display:flex;gap:6px;overflow:auto}
+.btn{border:1px solid #2a7ca5;background:rgba(3,18,31,.94);color:#bcecff;border-radius:10px;padding:9px 12px;font-weight:700;white-space:nowrap}
+.btn.on{background:#0b5577;color:#fff}
+.panel{position:absolute;z-index:1100;right:10px;top:58px;width:min(390px,calc(100% - 20px));max-height:78%;overflow:auto;background:rgba(3,13,23,.96);border:1px solid #2380a9;border-radius:14px;padding:14px;display:none;box-shadow:0 0 24px rgba(0,170,255,.18)}
+.logo{position:absolute;z-index:1000;bottom:8px;right:10px;border:1px solid #1989c5;background:rgba(3,19,34,.94);border-radius:16px;padding:6px 12px;font-size:10px;color:#5dd1ff;font-weight:800;white-space:nowrap}
+.status{position:absolute;z-index:1000;left:8px;bottom:8px;background:rgba(3,13,23,.92);padding:6px 10px;border-radius:8px;font-size:11px;color:#9cc7d9;border:1px solid #173e52;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.radar3d{position:relative;width:100%;height:260px;background:linear-gradient(#071827,#030b12);border:1px solid #20495e;border-radius:12px;overflow:hidden}
+.vcanvas{width:100%;height:100%}.close{float:right;border:0;background:none;color:#bcecff;font-size:20px}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:10px 0}
+.kv div{border:1px solid #173e52;border-radius:8px;padding:7px;background:rgba(7,27,40,.7)}
+.small{font-size:11px;color:#9db8c5}.eq{color:#ff5265}.green{color:#39ffab}
 </style>
 </head>
 <body>
@@ -20,8 +31,8 @@ html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;backgr
   <button id="close" class="close">×</button>
   <div id="inside"></div>
 </div>
-<div class="status" id="status">Caricamento dati...</div>
-<div class="logo">● NOWCASTING ITALIA DASHBOARD</div>
+<div class="status" id="status">Caricamento in corso...</div>
+<div class="logo">● NOWCASTING ITALIA</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const map = L.map('map', {center: [42, 12.5], zoom: 6, minZoom: 3, maxZoom: 9});
@@ -72,7 +83,7 @@ async function loadRainViewerRaster() {
             radar.addLayer(radarRasterLayer);
         }
     } catch (err) {
-        console.error("Errore caricamento raster RainViewer:", err);
+        console.error("Errore raster RainViewer:", err);
     }
 }
 
@@ -160,48 +171,48 @@ function drawEq() {
     });
 }
 
-const layerMap = {
-    'radar': radar,
-    'ir': ir,
-    'eq': eq
-};
-
+const layerMap = {'radar': radar, 'ir': ir, 'eq': eq};
 document.querySelectorAll('.btn').forEach(b => {
     b.onclick = () => {
         b.classList.toggle('on');
         const layerName = b.dataset.l;
         const targetLayer = layerMap[layerName];
-        
         if (targetLayer) {
-            if (b.classList.contains('on')) {
-                targetLayer.addTo(map);
-            } else {
-                map.removeLayer(targetLayer);
-            }
+            if (b.classList.contains('on')) targetLayer.addTo(map);
+            else map.removeLayer(targetLayer);
         }
     };
 });
 
 document.getElementById('close').onclick = () => document.getElementById('panel').style.display = 'none';
 
+// Caricamento asincrono disaccoppiato per evitare blocchi a catena
 async function load() {
+    loadRainViewerRaster();
+
+    // 1. Carica dati radar 3D e disegna vettori/centroidi subito
     try {
-        await loadRainViewerRaster();
-        const [a, e] = await Promise.all([
-            fetch('./radar3d.json?' + Date.now()).then(r => r.json()),
-            fetch('./earthquakes.geojson?' + Date.now()).text().then(text => text ? JSON.parse(text) : {features: []})
-        ]);
-        data = a;
-        eqData = e;
-        draw();
-        drawEq();
-        
-        // Testo accorciato e pulito per adattarsi perfettamente agli smartphone
-        const updateTime = new Date(a.metadata.generated_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
-        document.getElementById('status').textContent = `Aggiornato: ${updateTime} (Soglia: ${a.metadata.threshold_dbz} dBZ)`;
+        const res = await fetch('./radar3d.json?' + Date.now());
+        if (res.ok) {
+            data = await res.json();
+            draw();
+            const t = new Date(data.metadata.generated_at).toLocaleTimeString('it-IT', {hour: '2-digit', minute:'2-digit'});
+            document.getElementById('status').textContent = `Aggiornato: ${t} · Soglia: ${data.metadata.threshold_dbz}dBZ`;
+        }
     } catch (err) {
-        console.error("Errore caricamento dati:", err);
-        document.getElementById('status').textContent = 'Stato: Sorgente non disponibile';
+        console.error("Errore radar3d:", err);
+        document.getElementById('status').textContent = 'Errore caricamento radar';
+    }
+
+    // 2. Carica i terremoti in parallelo senza bloccare il radar
+    try {
+        const resEq = await fetch('./earthquakes.geojson?' + Date.now());
+        if (resEq.ok) {
+            eqData = await resEq.json();
+            drawEq();
+        }
+    } catch (err) {
+        console.error("Errore terremoti:", err);
     }
 }
 
