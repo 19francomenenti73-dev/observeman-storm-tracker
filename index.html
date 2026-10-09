@@ -6,7 +6,6 @@
 <title>Nowcasting Italia Dashboard</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 
-<!-- Icona personalizzata per la schermata Home -->
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="apple-touch-icon" href="icon-192.png">
 
@@ -18,10 +17,7 @@ html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;backgr
 
 .logo{position:absolute;z-index:1000;bottom:8px;right:10px;border:1px solid #1989c5;background:rgba(3,19,34,.94);border-radius:16px;padding:6px 12px;font-size:10px;color:#5dd1ff;font-weight:800;white-space:nowrap}
 .status{position:absolute;z-index:1000;left:8px;bottom:8px;background:rgba(3,13,23,.92);padding:6px 10px;border-radius:8px;font-size:11px;color:#9cc7d9;border:1px solid #173e52;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.eq{color:#ff5265}
-.green{color:#39ffab;font-weight:600}
 
-/* Stile personalizzato per il popup pulito */
 .custom-popup .leaflet-popup-content-wrapper {
     background: #ffffff;
     color: #1a1a1a;
@@ -69,31 +65,6 @@ irLayer.addTo(ir);
 
 function col(v) {
     return v >= 65 ? '#ff0000' : v >= 60 ? '#ff1744' : v >= 55 ? '#ff4d22' : v >= 50 ? '#ff8c00' : v >= 45 ? '#ffe000' : v >= 40 ? '#9be000' : '#00d9a0';
-}
-
-function classifyStorm(c, v) {
-    const dbz = c.dbz_max || 0;
-    const area = c.area_km2 || 0;
-    const echoTop = v ? v.echo_top_km : 8;
-    const speed = c.motion ? c.motion.speed_kmh : 20;
-    const hail = c.hail_risk || 'Basso';
-
-    if (dbz >= 58 && echoTop >= 13 && (hail === 'Alto' || hail === 'Estremo')) {
-        return { name: 'Supercella / Core Severo', color: '#ff304c' };
-    }
-    if (dbz >= 52 && area > 1200 && speed > 35) {
-        return { name: 'Bow Echo / Squall Line', color: '#ff8c00' };
-    }
-    if (area > 2500 && dbz >= 46) {
-        return { name: 'MCS (Sistema a Mesoscala)', color: '#1976d2' };
-    }
-    if (dbz >= 52 && echoTop >= 11) {
-        return { name: 'Temporale Intenso', color: '#e65100' };
-    }
-    if (area < 350 && dbz < 48) {
-        return { name: 'Cella Isolata (Pulse Storm)', color: '#2e7d32' };
-    }
-    return { name: 'Cella Convettiva Organizzata', color: '#0b5577' };
 }
 
 async function loadRainViewerRaster() {
@@ -149,19 +120,18 @@ function draw() {
 
 function showPopup(c) {
     const v = c.volume;
-    const classification = classifyStorm(c, v);
     const speedStr = c.motion ? `${c.motion.speed_kmh} km/h (${c.motion.bearing_deg}°)` : '—';
     const vilStr = v && v.vil ? `${v.vil}` : '—';
     const topStr = v ? `${v.echo_top_km.toFixed(1)} km` : '—';
 
     const content = `
-        <div style="font-family:system-ui,sans-serif; font-size:12px; color:#1a1a1a; min-width:260px; padding:4px;">
-            <div style="font-weight:700; font-size:13px; margin-bottom:4px; color:#0b5577;">ID: ${c.id}</div>
-            <div style="margin-bottom:3px;"><b>Struttura:</b> <span style="color:${classification.color}; font-weight:600;">>= ${c.dbz_max.toFixed(0)} dBZ — ${classification.name}</span></div>
+        <div style="font-family:system-ui,sans-serif; font-size:12px; color:#1a1a1a; min-width:270px; padding:4px;">
+            <div style="font-weight:700; font-size:13px; margin-bottom:4px; color:#0b5577;">Struttura: ${c.id}</div>
+            <div style="margin-bottom:3px;"><b>Riflettività Max:</b> <span style="color:${col(c.dbz_max)}; font-weight:600;">>= ${c.dbz_max.toFixed(0)} dBZ</span></div>
             <div style="margin-bottom:3px;"><b>Velocità:</b> ${speedStr}</div>
             <div style="margin-bottom:8px;"><b>VIL:</b> ${vilStr} kg/m² | <b>Top:</b> ${topStr}</div>
             <div style="border:1px solid #d0d7de; border-radius:8px; padding:6px; background:#071827; text-align:center;">
-                <div style="font-size:11px; color:#8ab4f8; margin-bottom:4px; font-weight:600;">Profilo Verticale Dettagliato</div>
+                <div style="font-size:11px; color:#8ab4f8; margin-bottom:4px; font-weight:600;">Profilo Verticale Isometrico (Pixel 3D)</div>
                 <div style="position:relative; width:100%; height:170px; background:#030b12; border-radius:6px; overflow:hidden;">
                     <canvas id="vc" style="width:100%; height:100%; display:block;"></canvas>
                 </div>
@@ -191,19 +161,17 @@ function draw3d(v) {
     ctx.scale(d, d);
     ctx.clearRect(0, 0, width, height);
     
-    // Utilizziamo ESCLUSIVAMENTE i dati voxel reali del radar, senza alcuna simulazione o forma fittizia
     const vox = v && v.voxels ? v.voxels : [];
-    
     if (vox.length === 0) {
         ctx.fillStyle = '#8ab4f8';
         ctx.font = '11px system-ui, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText('Nessun dettaglio volumetrico disponibile', width / 2, height / 2);
+        ctx.fillText('Nessun dato volumetrico disponibile', width / 2, height / 2);
         return;
     }
     
-    // Calcoliamo il centro di massa reale dei voxel per centrare la struttura nel canvas
+    // Baricentro dei voxel per il centramento automatico nel canvas
     let sumX = 0, sumY = 0, sumZ = 0;
     for (const q of vox) {
         sumX += q[0]; sumY += q[1]; sumZ += q[2];
@@ -214,9 +182,9 @@ function draw3d(v) {
     
     const ox = width / 2;
     const oy = height * 0.72;
-    const s = 4.5; // Dimensione dei blocchetti voxel reali
+    const s = 4.0; // Scala voxel
     
-    // Ordinamento isometrico rigoroso per la corretta sovrapposizione in profondità
+    // Ordinamento isometrico per corretta sovrapposizione posteriore/anteriore
     vox.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
     
     for (const q of vox) {
@@ -225,55 +193,17 @@ function draw3d(v) {
         const dy = iy - cy;
         const dz = iz - cz;
         
-        // Proiezione isometrica fedele alla struttura reale
         const px = ox + (dx - dy) * s;
-        const py = oy + (dx + dy) * s * 0.45 - dz * s * 0.9;
+        const py = oy + (dx + dy) * s * 0.45 - dz * s * 0.85;
         
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.95;
         ctx.fillStyle = col(dbz);
-        ctx.fillRect(px, py, s + 1, s + 1);
+        ctx.fillRect(px, py, s + 0.8, s + 0.8);
     }
 }
 
-function drawEq() {
-    eq.clearLayers();
-    (eqData.features || []).forEach(f => {
-        const p = f.geometry.coordinates, pr = f.properties;
-        const m = L.circleMarker([p[1], p[0]], {radius: 8, color: '#ff304c', fillColor: '#ff304c', fillOpacity: .85});
-        m.on('click', () => {
-            const eqContent = `
-                <div style="font-family:system-ui,sans-serif; font-size:12px; color:#1a1a1a; min-width:220px; padding:4px;">
-                    <div style="font-weight:700; font-size:13px; margin-bottom:4px; color:#ff304c;">TERREMOTO M ${pr.magnitude}</div>
-                    <div style="font-weight:600; margin-bottom:4px;">${pr.place}</div>
-                    <div style="color:#57606a; margin-bottom:4px;">${new Date(pr.time).toLocaleString('it-IT')}<br>Profondità: ${p[2]} km</div>
-                    <div style="font-size:10px; color:#8c959f;">Fonte: USGS</div>
-                </div>
-            `;
-            L.popup({maxWidth: 280, className: 'custom-popup'})
-                .setLatLng([p[1], p[0]])
-                .setContent(eqContent)
-                .openOn(map);
-        });
-        eq.addLayer(m);
-    });
-}
-
-const layerMap = {'radar': radar, 'ir': ir, 'eq': eq};
-document.querySelectorAll('.btn').forEach(b => {
-    b.onclick = () => {
-        b.classList.toggle('on');
-        const layerName = b.dataset.l;
-        const targetLayer = layerMap[layerName];
-        if (targetLayer) {
-            if (b.classList.contains('on')) targetLayer.addTo(map);
-            else map.removeLayer(targetLayer);
-        }
-    };
-});
-
 async function load() {
     loadRainViewerRaster();
-
     try {
         const res = await fetch('./radar3d.json?' + Date.now());
         if (res.ok) {
@@ -284,17 +214,6 @@ async function load() {
         }
     } catch (err) {
         console.error("Errore radar3d:", err);
-        document.getElementById('status').textContent = 'Errore caricamento radar';
-    }
-
-    try {
-        const resEq = await fetch('./earthquakes.geojson?' + Date.now());
-        if (resEq.ok) {
-            eqData = await resEq.json();
-            drawEq();
-        }
-    } catch (err) {
-        console.error("Errore terremoti:", err);
     }
 }
 
