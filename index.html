@@ -21,7 +21,7 @@ html,body,#map{height:100%;margin:0}body{font-family:system-ui,sans-serif;backgr
 .eq{color:#ff5265}
 .green{color:#39ffab;font-weight:600}
 
-/* Stile personalizzato per il popup stile Leaflet pulito */
+/* Stile personalizzato per il popup pulito */
 .custom-popup .leaflet-popup-content-wrapper {
     background: #ffffff;
     color: #1a1a1a;
@@ -161,9 +161,9 @@ function showPopup(c) {
             <div style="margin-bottom:3px;"><b>Velocità:</b> ${speedStr}</div>
             <div style="margin-bottom:8px;"><b>VIL:</b> ${vilStr} kg/m² | <b>Top:</b> ${topStr}</div>
             ${v ? `
-            <div style="border:1px solid #d0d7de; border-radius:8px; padding:6px; background:#f6f8fa; text-align:center;">
-                <div style="font-size:11px; color:#57606a; margin-bottom:4px; font-weight:600;">Profilo Verticale Dettagliato</div>
-                <div style="position:relative; width:100%; height:180px; background:#071827; border-radius:6px; overflow:hidden;">
+            <div style="border:1px solid #d0d7de; border-radius:8px; padding:6px; background:#071827; text-align:center;">
+                <div style="font-size:11px; color:#8ab4f8; margin-bottom:4px; font-weight:600;">Profilo Verticale Dettagliato</div>
+                <div style="position:relative; width:100%; height:170px; background:#030b12; border-radius:6px; overflow:hidden;">
                     <canvas id="vc" style="width:100%; height:100%; display:block;"></canvas>
                 </div>
             </div>` : ''}
@@ -176,25 +176,53 @@ function showPopup(c) {
         .openOn(map);
 
     if (v) {
-        setTimeout(() => draw3d(v), 50);
+        setTimeout(() => draw3d(v), 80);
     }
 }
 
 function draw3d(v) {
     const can = document.getElementById('vc');
     if (!can) return;
-    const r = can.getBoundingClientRect(), d = devicePixelRatio || 1;
-    can.width = r.width * d; can.height = r.height * d;
+    
+    const width = can.clientWidth || 280;
+    const height = can.clientHeight || 170;
+    const d = devicePixelRatio || 1;
+    can.width = width * d;
+    can.height = height * d;
+    
     const x = can.getContext('2d');
     x.scale(d, d);
-    const ox = r.width / 2, oy = r.height * 0.72, s = 4;
+    x.clearRect(0, 0, width, height);
+    
     const vox = v.voxels || [];
+    if (vox.length === 0) return;
+    
+    // Calcoliamo il centro di massa dei voxel per centrarli perfettamente nel canvas
+    let sumX = 0, sumY = 0, sumZ = 0;
+    for (const q of vox) {
+        sumX += q[0]; sumY += q[1]; sumZ += q[2];
+    }
+    const cx = sumX / vox.length;
+    const cy = sumY / vox.length;
+    const cz = sumZ / vox.length;
+    
+    const ox = width / 2;
+    const oy = height * 0.62;
+    const s = 6; // Dimensione voxel ottimizzata
+    
+    // Ordinamento isometrico per la corretta sovrapposizione 3D
     vox.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
+    
     for (const q of vox) {
         const [ix, iy, iz, dbz] = q;
-        const px = ox + (ix - iy) * s;
-        const py = oy + (ix + iy) * s * .42 - iz * s * .9;
-        x.globalAlpha = .22 + Math.min(.68, dbz / 100);
+        const dx = ix - cx;
+        const dy = iy - cy;
+        const dz = iz - cz;
+        
+        const px = ox + (dx - dy) * s;
+        const py = oy + (dx + dy) * s * 0.45 - dz * s * 1.1;
+        
+        x.globalAlpha = 0.35 + Math.min(0.65, dbz / 90);
         x.fillStyle = col(dbz);
         x.fillRect(px, py, s + 1, s + 1);
     }
