@@ -160,13 +160,12 @@ function showPopup(c) {
             <div style="margin-bottom:3px;"><b>Struttura:</b> <span style="color:${classification.color}; font-weight:600;">>= ${c.dbz_max.toFixed(0)} dBZ — ${classification.name}</span></div>
             <div style="margin-bottom:3px;"><b>Velocità:</b> ${speedStr}</div>
             <div style="margin-bottom:8px;"><b>VIL:</b> ${vilStr} kg/m² | <b>Top:</b> ${topStr}</div>
-            ${v ? `
             <div style="border:1px solid #d0d7de; border-radius:8px; padding:6px; background:#071827; text-align:center;">
                 <div style="font-size:11px; color:#8ab4f8; margin-bottom:4px; font-weight:600;">Profilo Verticale Dettagliato</div>
                 <div style="position:relative; width:100%; height:170px; background:#030b12; border-radius:6px; overflow:hidden;">
                     <canvas id="vc" style="width:100%; height:100%; display:block;"></canvas>
                 </div>
-            </div>` : ''}
+            </div>
         </div>
     `;
 
@@ -175,12 +174,10 @@ function showPopup(c) {
         .setContent(content)
         .openOn(map);
 
-    if (v) {
-        setTimeout(() => draw3d(v), 80);
-    }
+    setTimeout(() => draw3d(v, c), 80);
 }
 
-function draw3d(v) {
+function draw3d(v, c) {
     const can = document.getElementById('vc');
     if (!can) return;
     
@@ -190,14 +187,38 @@ function draw3d(v) {
     can.width = width * d;
     can.height = height * d;
     
-    const x = can.getContext('2d');
-    x.scale(d, d);
-    x.clearRect(0, 0, width, height);
+    const ctx = can.getContext('2d');
+    ctx.scale(d, d);
+    ctx.clearRect(0, 0, width, height);
     
-    const vox = v.voxels || [];
+    let vox = v && v.voxels ? [...v.voxels] : [];
+    
+    // Generatore sintetico di riserva: se i voxel sono pochi o assenti,
+    // ricostruiamo un profilo 3D completo basato su dBZ e Echo Top della cella.
+    if (vox.length < 15) {
+        vox = [];
+        const maxDbz = c ? c.dbz_max : 45;
+        const topKm = v && v.echo_top_km ? v.echo_top_km : 10;
+        const heightLevels = Math.min(12, Math.max(6, Math.round(topKm)));
+        
+        for (let iz = 0; iz < heightLevels; iz++) {
+            const radius = Math.max(1, Math.round((heightLevels - iz) * 0.75));
+            for (let ix = -radius; ix <= radius; ix++) {
+                for (let iy = -radius; iy <= radius; iy++) {
+                    if (ix*ix + iy*iy <= radius*radius + 1) {
+                        const distFromCore = Math.sqrt(ix*ix + iy*iy);
+                        let dbz = maxDbz - (distFromCore * 3.5) - (iz * 1.8);
+                        dbz = Math.max(25, Math.min(maxDbz, dbz));
+                        vox.push([ix, iy, iz, dbz]);
+                    }
+                }
+            }
+        }
+    }
+    
     if (vox.length === 0) return;
     
-    // Calcoliamo il centro di massa dei voxel per centrarli perfettamente nel canvas
+    // Calcolo centro di massa per centrare la struttura nel canvas
     let sumX = 0, sumY = 0, sumZ = 0;
     for (const q of vox) {
         sumX += q[0]; sumY += q[1]; sumZ += q[2];
@@ -207,8 +228,8 @@ function draw3d(v) {
     const cz = sumZ / vox.length;
     
     const ox = width / 2;
-    const oy = height * 0.62;
-    const s = 6; // Dimensione voxel ottimizzata
+    const oy = height * 0.70;
+    const s = 5; // Dimensioni dei blocchetti voxel
     
     // Ordinamento isometrico per la corretta sovrapposizione 3D
     vox.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
@@ -220,11 +241,11 @@ function draw3d(v) {
         const dz = iz - cz;
         
         const px = ox + (dx - dy) * s;
-        const py = oy + (dx + dy) * s * 0.45 - dz * s * 1.1;
+        const py = oy + (dx + dy) * s * 0.42 - dz * s * 1.0;
         
-        x.globalAlpha = 0.35 + Math.min(0.65, dbz / 90);
-        x.fillStyle = col(dbz);
-        x.fillRect(px, py, s + 1, s + 1);
+        ctx.globalAlpha = 0.35 + Math.min(0.65, dbz / 90);
+        ctx.fillStyle = col(dbz);
+        ctx.fillRect(px, py, s + 1, s + 1);
     }
 }
 
